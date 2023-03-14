@@ -7,7 +7,7 @@ import scala.concurrent.Future
 
 case class SSEEvent(data: String)
 
-class SseReader(uri: String, printerActor: ActorRef)(implicit system: ActorSystem) extends Actor {
+class SseReader(uri: String, printerActorSupervisor: ActorRef)(implicit system: ActorSystem) extends Actor {
 
   private val request = HttpRequest(uri = Uri(uri))
 
@@ -21,7 +21,7 @@ class SseReader(uri: String, printerActor: ActorRef)(implicit system: ActorSyste
       val sseStream: Source[SSEEvent, Any] = source.map(SSEEvent)
 
       sseStream.runForeach { event =>
-        printerActor ! event
+        printerActorSupervisor ! event
       }
   }
 }
@@ -30,12 +30,12 @@ object SseReader {
   def main(args: Array[String]): Unit = {
     implicit val system: ActorSystem = ActorSystem("SSESystem")
 
-    val printerActor = system.actorOf(Props[TweetPrinterActor], "printerActor")
+    val supervisor = system.actorOf(Props[TweetPrinterPool], "supervisor")
 
-    val sseActor = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", printerActor)), "sseReader1")
-    val sseActor2 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/2", printerActor)), "sseReader2")
-
+    val sseActor = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", supervisor)), "sseReader1")
+    val sseActor2 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/2", supervisor)), "sseReader2")
+//
     sseActor ! "start"
-    sseActor2 ! "start"
+//    sseActor2 ! "start"
   }
 }

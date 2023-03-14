@@ -12,7 +12,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-streams" % "2.8.18",
   "io.circe" %% "circe-core" % "0.14.4",
   "io.circe" %% "circe-parser" % "0.14.4",
-  "io.circe" %% "circe-generic-extras" % "0.14.3"
+  "io.circe" %% "circe-generic-extras" % "0.14.3",
+  "com.typesafe.akka" %% "akka-cluster" % "2.7.0",
 )
 
 lazy val root = (project in file("."))
