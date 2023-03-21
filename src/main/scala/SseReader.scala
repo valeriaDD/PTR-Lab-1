@@ -30,12 +30,12 @@ object SseReader {
   def main(args: Array[String]): Unit = {
     implicit val system: ActorSystem = ActorSystem("SSESystem")
 
-    val supervisor = system.actorOf(Props[TweetPrinterPool], "supervisor")
+//    val manager = system.actorOf(Props(new TweetManager(3, 5)), "manager")
+
+    val supervisor = system.actorOf(Props(new TweetPrinterPool()), "supervisor")
 
     val sseActor = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", supervisor)), "sseReader1")
-    val sseActor2 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/2", supervisor)), "sseReader2")
-//
+
     sseActor ! "start"
-//    sseActor2 ! "start"
   }
 }
