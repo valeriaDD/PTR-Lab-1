@@ -15,7 +15,7 @@ class TweetPrinterPool()(implicit system: ActorSystem) extends Actor with ActorL
     lowerBound = 3,
     upperBound = 5,
     backoffThreshold = 0.3,
-    messagesPerResize = 10
+    messagesPerResize = 10,
   )
 
   private val router = system.actorOf(RoundRobinPool(3)

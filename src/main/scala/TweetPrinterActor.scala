@@ -25,7 +25,7 @@ class TweetPrinterActor extends Actor with ActorLogging {
         log.info(s"Actor ${self.path.name} from ${sender().path.name}: $blurredTweetText");
 
         val sleepTime = Random.nextInt(46) + 5
-        Thread.sleep(1000)
+        Thread.sleep(sleepTime)
       }
     case _ => log.error(s" ${self.path.name}: I don't know how to process it")
   }
