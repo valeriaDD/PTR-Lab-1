@@ -4,6 +4,14 @@ import akka.routing._
 
 class TweetPrinterPool(var emotionsMap: Map[String, Int])(implicit system: ActorSystem) extends Actor with ActorLogging {
 
+  override def preStart(): Unit = {
+    log.info(s"Pool ${self.path.name} started!")
+  }
+
+  override def postStop(): Unit = {
+    log.info(s"Pool ${self.path.name} stopped")
+  }
+
   override val supervisorStrategy: OneForOneStrategy = OneForOneStrategy() {
     case e: Exception =>
       log.error(s"Actor ${sender().path.name} in pool ${sender().path.parent.name} failed with $e, restarting...")

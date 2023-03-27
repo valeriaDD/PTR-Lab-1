@@ -46,7 +46,7 @@ object SseReader {
 
     response.onComplete {
       case Success(emotionsMap) =>
-        val pool = system.actorOf(Props(new TweetPrinterPool(emotionsMap)), "supervisor")
+        val pool = system.actorOf(Props(new TweeterPrinterPoolSupervisor(3, emotionsMap)), "supervisor")
         val sseActor = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", pool)), "sseReader1")
         sseActor ! "start"
       case Failure(ex) => println(s"Failed to get emotions: ${ex.getMessage}")
