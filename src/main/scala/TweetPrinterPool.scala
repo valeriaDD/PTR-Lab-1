@@ -2,7 +2,7 @@ import akka.actor.SupervisorStrategy.{Escalate, Restart}
 import akka.actor.{Actor, ActorLogging, ActorSystem, OneForOneStrategy, Props}
 import akka.routing._
 
-class TweetPrinterPool()(implicit system: ActorSystem) extends Actor with ActorLogging {
+class TweetPrinterPool(var emotionsMap: Map[String, Int])(implicit system: ActorSystem) extends Actor with ActorLogging {
 
   override val supervisorStrategy: OneForOneStrategy = OneForOneStrategy() {
     case e: Exception =>
@@ -21,7 +21,7 @@ class TweetPrinterPool()(implicit system: ActorSystem) extends Actor with ActorL
   private val router = system.actorOf(RoundRobinPool(3)
     .withResizer(resizer)
     .withSupervisorStrategy(supervisorStrategy)
-    .props(Props[TweetPrinterActor]))
+    .props(Props(new TweetPrinterActor(emotionsMap))))
 
   def receive: Receive = {
     case sseEvent: SSEEvent => router ! sseEvent

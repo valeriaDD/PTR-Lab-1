@@ -1,9 +1,11 @@
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
+import akka.pattern.ask
 import akka.stream.scaladsl.Source
 
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 case class SSEEvent(data: String)
 
@@ -28,14 +30,26 @@ class SseReader(uri: String, printerActorSupervisor: ActorRef)(implicit system: 
 
 object SseReader {
   def main(args: Array[String]): Unit = {
+    import akka.util.Timeout
+
+    import scala.concurrent.duration._
+
+    implicit val timeout: Timeout = Timeout(5.seconds)
     implicit val system: ActorSystem = ActorSystem("SSESystem")
 
-//    val manager = system.actorOf(Props(new TweetManager(3, 5)), "manager")
+    val emotions = system.actorOf(Props(new EmotionSseReader("http://localhost:50/emotion_values")))
 
-    val supervisor = system.actorOf(Props(new TweetPrinterPool()), "supervisor")
+    emotions ! "emotions"
+    import system.dispatcher
+    Thread.sleep(5000);
+    val response = (emotions ? "getEmotions").mapTo[Map[String, Int]]
 
-    val sseActor = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", supervisor)), "sseReader1")
-
-    sseActor ! "start"
+    response.onComplete {
+      case Success(emotionsMap) =>
+        val pool = system.actorOf(Props(new TweetPrinterPool(emotionsMap)), "supervisor")
+        val sseActor = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", pool)), "sseReader1")
+        sseActor ! "start"
+      case Failure(ex) => println(s"Failed to get emotions: ${ex.getMessage}")
+    }
   }
 }
