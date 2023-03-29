@@ -1,17 +1,11 @@
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, PoisonPill, Props}
+import akka.actor.{Actor, ActorLogging, PoisonPill}
 
 import scala.io.Source
 import scala.util.Random
 
-case class CalculateEngagementRatio(tweet: String)
-case class CalculateSentimentalScore(tweet: String)
-
-class TweetPrinterActor(var emotionsMap: Map[String, Int])(implicit system: ActorSystem) extends Actor with ActorLogging {
-  val emotions: ActorRef = system.actorOf(Props(new SentimentalScoreActor(emotionsMap)))
-  val engagement: ActorRef = system.actorOf(Props(new EngagementRatioCalculator))
-
+class TweetPrinterActor(emotionsMap: Map[String, Int]) extends Actor with ActorLogging {
   override def preStart(): Unit = {
-    log.info(s"Actor ${self.path.name} restarted! :)")
+    log.info(s"Printer Actor ${self.path.name} restarted! :)")
   }
 
   override def postStop(): Unit = {
@@ -29,11 +23,8 @@ class TweetPrinterActor(var emotionsMap: Map[String, Int])(implicit system: Acto
         val blurredTweetText = this.blurBadWords(tweetText);
 
         log.info(s"Actor ${self.path.name} from ${sender().path.name}: $blurredTweetText");
-        emotions ! CalculateSentimentalScore(sseEvent.data)
-        engagement ! CalculateEngagementRatio(sseEvent.data)
 
-        val sleepTime = Random.nextInt(46) + 5
-        Thread.sleep(sleepTime)
+        Thread.sleep(Random.nextInt(46) + 5)
       }
     case _ => log.error(s" ${self.path.name}: I don't know how to process it")
   }
@@ -58,10 +49,14 @@ class TweetPrinterActor(var emotionsMap: Map[String, Int])(implicit system: Acto
   }
 }
 
-class EngagementRatioCalculator extends Actor with ActorLogging {
+class EngagementRatioCalculator(emotionsMap: Map[String, Int]) extends Actor with ActorLogging {
+  override def preStart(): Unit = {
+    log.info(s"Engagement Actor ${self.path.name} restarted! :)")
+  }
+
   override def receive: Receive = {
-    case event: CalculateEngagementRatio => {
-      val tweet = event.tweet
+    case event: SSEEvent => {
+      val tweet = event.data
       val regexFavorites = "\"favourites_count\":(\\d+)".r.unanchored
       val regexFollowers = "\"followers_count\":(\\d+)".r.unanchored
       val regexRetweets = "\"retweet_count\":(\\d+)".r.unanchored
@@ -77,13 +72,16 @@ class EngagementRatioCalculator extends Actor with ActorLogging {
 }
 
 class SentimentalScoreActor(emotionsMap: Map[String, Int]) extends Actor with ActorLogging {
+  override def preStart(): Unit = {
+    log.info(s"Sentimental Actor ${self.path.name} restarted! :)")
+  }
   override def receive: Receive = {
-    case event: CalculateSentimentalScore => {
-      val sentimentScore = event.tweet
+    case event: SSEEvent => {
+      val sentimentScore = event.data
         .split("\\s+")
         .map(word => emotionsMap.getOrElse(word.toLowerCase, 0))
         .sum
-        .toDouble / event.tweet.split("\\s+").length
+        .toDouble / event.data.split("\\s+").length
 
       log.info(s"Sentiment Score: $sentimentScore")
     }

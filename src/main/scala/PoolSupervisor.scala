@@ -1,7 +1,7 @@
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.routing.RoundRobinPool
 
-class TweeterPrinterPoolSupervisor (numPools: Int, emotionsMap: Map[String, Int])(implicit system: ActorSystem) extends Actor with ActorLogging{
+class PoolSupervisor(numPools: Int, actorClass: Class[_ <: Actor], emotionsMap: Map[String, Int])(implicit system: ActorSystem) extends Actor with ActorLogging{
   override def preStart(): Unit = {
     log.info(s"Pool Supervisor ${self.path.name} started!")
   }
@@ -11,7 +11,7 @@ class TweeterPrinterPoolSupervisor (numPools: Int, emotionsMap: Map[String, Int]
   }
 
   private val router = system.actorOf(RoundRobinPool(numPools)
-    .props(Props(new TweetPrinterPool(emotionsMap))))
+    .props(Props(actorClass, emotionsMap)))
 
   def receive: Receive = {
     case sseEvent: SSEEvent => router ! sseEvent
