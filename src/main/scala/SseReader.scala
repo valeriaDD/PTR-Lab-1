@@ -41,23 +41,23 @@ object SseReader {
 
     emotions ! "emotions"
     import system.dispatcher
-    Thread.sleep(5000);
+    Thread.sleep(5000)
     val response = (emotions ? "getEmotions").mapTo[Map[String, Int]]
 
     response.onComplete {
       case Success(emotionsMap) =>
 
-        val poolSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[TweetPrinterActor], emotionsMap)), "supervisor")
-        val poolEmotionsSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[EngagementRatioCalculator], emotionsMap)), "supervisorEngagement")
-        val poolSentimentalSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[SentimentalScoreActor], emotionsMap)), "supervisorSentimental")
+        val poolSupervisor = system.actorOf(Props(new PoolSupervisor(1, classOf[TweetPrinterActor], emotionsMap)), "supervisor")
+//        val poolEmotionsSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[EngagementRatioCalculator], emotionsMap)), "supervisorEngagement")
+//        val poolSentimentalSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[SentimentalScoreActor], emotionsMap)), "supervisorSentimental")
 
         val sseActor = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolSupervisor)), "sseReader1")
-        val sseActor1 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolEmotionsSupervisor)), "sseReader2")
-        val sseActor2 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolSentimentalSupervisor)), "sseReader3")
+//        val sseActor1 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolEmotionsSupervisor)), "sseReader2")
+//        val sseActor2 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolSentimentalSupervisor)), "sseReader3")
 
         sseActor ! "start"
-        sseActor1 ! "start"
-        sseActor2 ! "start"
+//        sseActor1 ! "start"
+//        sseActor2 ! "start"
 
       case Failure(ex) => println(s"Failed to get emotions: ${ex.getMessage}")
     }

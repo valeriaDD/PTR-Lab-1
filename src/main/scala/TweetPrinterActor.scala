@@ -1,9 +1,10 @@
-import akka.actor.{Actor, ActorLogging, PoisonPill}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 
 import scala.io.Source
 import scala.util.Random
 
 class TweetPrinterActor(emotionsMap: Map[String, Int]) extends Actor with ActorLogging {
+  val batcher: ActorRef = context.actorOf(Props(new BatcherActor(3)), "child")
   override def preStart(): Unit = {
     log.info(s"Printer Actor ${self.path.name} restarted! :)")
   }
@@ -20,9 +21,10 @@ class TweetPrinterActor(emotionsMap: Map[String, Int]) extends Actor with ActorL
       } else {
         val pattern = "\"text\":\"(.*?)\"".r.unanchored
         val tweetText = pattern.findFirstMatchIn(sseEvent.data).map(_.group(1)).getOrElse("")
-        val blurredTweetText = this.blurBadWords(tweetText);
+        val blurredTweetText = this.blurBadWords(tweetText)
 
-        log.info(s"Actor ${self.path.name} from ${sender().path.name}: $blurredTweetText");
+        batcher !  blurredTweetText
+//        log.info(s"Actor ${self.path.name} from ${sender().path.name}: $blurredTweetText");
 
         Thread.sleep(Random.nextInt(46) + 5)
       }
