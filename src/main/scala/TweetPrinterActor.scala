@@ -1,10 +1,11 @@
-import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill}
 
 import scala.io.Source
 import scala.util.Random
 
-class TweetPrinterActor(emotionsMap: Map[String, Int]) extends Actor with ActorLogging {
-  val batcher: ActorRef = context.actorOf(Props(new BatcherActor(3)), "child")
+case class ProcessedTweet(id: String, key: String, value: String);
+
+class TweetPrinterActor(emotionsMap: Map[String, Int], aggregator: ActorRef) extends Actor with ActorLogging {
   override def preStart(): Unit = {
     log.info(s"Printer Actor ${self.path.name} restarted! :)")
   }
@@ -21,10 +22,13 @@ class TweetPrinterActor(emotionsMap: Map[String, Int]) extends Actor with ActorL
       } else {
         val pattern = "\"text\":\"(.*?)\"".r.unanchored
         val tweetText = pattern.findFirstMatchIn(sseEvent.data).map(_.group(1)).getOrElse("")
+
+        val idPattern = "\"id_str\":\"(.*?)\"".r.unanchored
+        val id = idPattern.findFirstMatchIn(sseEvent.data).map(_.group(1)).getOrElse("")
+
         val blurredTweetText = this.blurBadWords(tweetText)
 
-        batcher !  blurredTweetText
-//        log.info(s"Actor ${self.path.name} from ${sender().path.name}: $blurredTweetText");
+        aggregator !  ProcessedTweet(id, "text", blurredTweetText)
 
         Thread.sleep(Random.nextInt(46) + 5)
       }
@@ -51,7 +55,7 @@ class TweetPrinterActor(emotionsMap: Map[String, Int]) extends Actor with ActorL
   }
 }
 
-class EngagementRatioCalculator(emotionsMap: Map[String, Int]) extends Actor with ActorLogging {
+class EngagementRatioCalculator(emotionsMap: Map[String, Int], aggregator: ActorRef) extends Actor with ActorLogging {
   override def preStart(): Unit = {
     log.info(s"Engagement Actor ${self.path.name} restarted! :)")
   }
@@ -66,26 +70,34 @@ class EngagementRatioCalculator(emotionsMap: Map[String, Int]) extends Actor wit
       val followersCount = regexFollowers.findFirstMatchIn(tweet).map(_.group(1)).getOrElse("")
       val retweetsCount = regexRetweets.findFirstMatchIn(tweet).map(_.group(1)).getOrElse("")
 
-      val engagementRatio = (favouritesCount.toInt + retweetsCount.toInt).toDouble / followersCount.toInt
+      val idPattern = "\"id_str\":\"(.*?)\"".r.unanchored
+      val id = idPattern.findFirstMatchIn(tweet).map(_.group(1)).getOrElse("")
 
-      log.info(s"Engagement Ratio: $engagementRatio")
+      val engagementRatio = (favouritesCount.toInt + retweetsCount.toInt).toDouble / followersCount.toInt
+      aggregator !  ProcessedTweet(id, "engagementRatio", engagementRatio.toString)
+
+//      log.info(s"Engagement Ratio: $engagementRatio")
     }
   }
 }
 
-class SentimentalScoreActor(emotionsMap: Map[String, Int]) extends Actor with ActorLogging {
+class SentimentalScoreActor(emotionsMap: Map[String, Int], aggregator: ActorRef) extends Actor with ActorLogging {
   override def preStart(): Unit = {
     log.info(s"Sentimental Actor ${self.path.name} restarted! :)")
   }
   override def receive: Receive = {
     case event: SSEEvent => {
+      val idPattern = "\"id_str\":\"(.*?)\"".r.unanchored
+      val id = idPattern.findFirstMatchIn(event.data).map(_.group(1)).getOrElse("")
+
       val sentimentScore = event.data
         .split("\\s+")
         .map(word => emotionsMap.getOrElse(word.toLowerCase, 0))
         .sum
         .toDouble / event.data.split("\\s+").length
 
-      log.info(s"Sentiment Score: $sentimentScore")
+      aggregator !  ProcessedTweet(id, "sentimentalScore", sentimentScore.toString)
+      //      log.info(s"Sentiment Score: $sentimentScore")
     }
   }
 }

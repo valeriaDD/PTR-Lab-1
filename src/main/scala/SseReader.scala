@@ -23,7 +23,9 @@ class SseReader(uri: String, printerActorSupervisor: ActorRef)(implicit system: 
       val sseStream: Source[SSEEvent, Any] = source.map(SSEEvent)
 
       sseStream.runForeach { event =>
-        printerActorSupervisor ! event
+        if(!event.data.contains("panic")) {
+          printerActorSupervisor ! event
+        }
       }
   }
 }
@@ -47,17 +49,19 @@ object SseReader {
     response.onComplete {
       case Success(emotionsMap) =>
 
-        val poolSupervisor = system.actorOf(Props(new PoolSupervisor(1, classOf[TweetPrinterActor], emotionsMap)), "supervisor")
-//        val poolEmotionsSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[EngagementRatioCalculator], emotionsMap)), "supervisorEngagement")
-//        val poolSentimentalSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[SentimentalScoreActor], emotionsMap)), "supervisorSentimental")
+        val aggregator = system.actorOf(Props(new AggregatorActor), "aggregator")
+
+        val poolSupervisor = system.actorOf(Props(new PoolSupervisor(1, classOf[TweetPrinterActor], emotionsMap, aggregator)), "supervisor")
+        val poolEmotionsSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[EngagementRatioCalculator], emotionsMap, aggregator)), "supervisorEngagement")
+        val poolSentimentalSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[SentimentalScoreActor], emotionsMap, aggregator)), "supervisorSentimental")
 
         val sseActor = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolSupervisor)), "sseReader1")
-//        val sseActor1 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolEmotionsSupervisor)), "sseReader2")
-//        val sseActor2 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolSentimentalSupervisor)), "sseReader3")
+        val sseActor1 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolEmotionsSupervisor)), "sseReader2")
+        val sseActor2 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolSentimentalSupervisor)), "sseReader3")
 
         sseActor ! "start"
-//        sseActor1 ! "start"
-//        sseActor2 ! "start"
+        sseActor1 ! "start"
+        sseActor2 ! "start"
 
       case Failure(ex) => println(s"Failed to get emotions: ${ex.getMessage}")
     }
