@@ -1,10 +1,10 @@
 import akka.actor.{Actor, Cancellable}
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration._
 
-
-class BatcherActor(batchSize: Int = 5, timeWindow: FiniteDuration = 5.seconds) extends Actor {
+case object Tick;
+class BatcherActor(batchSize: Int = 5, timeWindow: FiniteDuration = 10.seconds) extends Actor {
   private val buffer = new ListBuffer[String]()
   private var timerCancellable: Option[Cancellable] = None
 
@@ -17,25 +17,24 @@ class BatcherActor(batchSize: Int = 5, timeWindow: FiniteDuration = 5.seconds) e
         scheduleTimer()
       }
 
-    case "Tick" =>
+    case Tick =>
       printBatchAndCancelTimer()
   }
 
   private def printBatchAndCancelTimer(): Unit = {
     timerCancellable.foreach(_.cancel())
     timerCancellable = None
-    if (buffer.nonEmpty) {
       println(s"Batch of size ${buffer.length}: ${buffer.mkString(", ")}")
       buffer.clear()
-    }
   }
 
   private def scheduleTimer(): Unit = {
     import context.dispatcher
-    timerCancellable = Some(context.system.scheduler.scheduleOnce(timeWindow, self, "Tick"))
+    timerCancellable = Some(context.system.scheduler.scheduleWithFixedDelay(Duration.Zero, timeWindow, self, Tick))
   }
 
   override def postStop(): Unit = {
     timerCancellable.foreach(_.cancel())
+    timerCancellable = None
   }
 }

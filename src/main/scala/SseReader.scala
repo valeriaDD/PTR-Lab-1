@@ -55,9 +55,9 @@ object SseReader {
         val poolEmotionsSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[EngagementRatioCalculator], emotionsMap, aggregator)), "supervisorEngagement")
         val poolSentimentalSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[SentimentalScoreActor], emotionsMap, aggregator)), "supervisorSentimental")
 
-        val sseActor = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolSupervisor)), "sseReader1")
-        val sseActor1 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolEmotionsSupervisor)), "sseReader2")
-        val sseActor2 = system.actorOf(Props(new SseReader("http://localhost:50/tweets/1", poolSentimentalSupervisor)), "sseReader3")
+        val sseActor = system.actorOf(Props(new SseReader("http://localhost:70/tweets/1", poolSupervisor)), "sseReader1")
+        val sseActor1 = system.actorOf(Props(new SseReader("http://localhost:70/tweets/1", poolEmotionsSupervisor)), "sseReader2")
+        val sseActor2 = system.actorOf(Props(new SseReader("http://localhost:70/tweets/1", poolSentimentalSupervisor)), "sseReader3")
 
         sseActor ! "start"
         sseActor1 ! "start"
