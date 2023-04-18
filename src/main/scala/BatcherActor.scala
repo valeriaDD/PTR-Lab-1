@@ -4,17 +4,20 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 
 case object Tick;
-class BatcherActor(batchSize: Int = 5, timeWindow: FiniteDuration = 10.seconds) extends Actor {
+class BatcherActor(batchSize: Int = 5, timeWindow: FiniteDuration = 3.seconds) extends Actor {
   private val buffer = new ListBuffer[String]()
   private var timerCancellable: Option[Cancellable] = None
+
+  override def preStart(): Unit = {
+    scheduleTimer()
+  }
+
 
   override def receive: Receive = {
     case tweet: String =>
       buffer += tweet
       if (buffer.length >= batchSize) {
         printBatchAndCancelTimer()
-      } else if (timerCancellable.isEmpty) {
-        scheduleTimer()
       }
 
     case Tick =>

@@ -14,6 +14,11 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-parser" % "0.14.4",
   "io.circe" %% "circe-generic-extras" % "0.14.3",
   "com.typesafe.akka" %% "akka-cluster" % "2.7.0",
+  "com.typesafe.slick" %% "slick" % "3.3.3",
+  "org.postgresql" % "postgresql" % "42.3.4",
+  "com.typesafe.slick" %% "slick-hikaricp" % "3.3.3",
+  "com.github.tminglei" %% "slick-pg" % "0.20.3",
+  "com.github.tminglei" %% "slick-pg_play-json" % "0.20.3"
 )
 
 lazy val root = (project in file("."))

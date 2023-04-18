@@ -23,8 +23,9 @@ class TweetPrinterActor(emotionsMap: Map[String, Int], aggregator: ActorRef) ext
         val pattern = "\"text\":\"(.*?)\"".r.unanchored
         val tweetText = pattern.findFirstMatchIn(sseEvent.data).map(_.group(1)).getOrElse("")
 
-        val idPattern = "\"id_str\":\"(.*?)\"".r.unanchored
-        val id = idPattern.findFirstMatchIn(sseEvent.data).map(_.group(1)).getOrElse("")
+        val idPattern = """("id_str":"\d+")""".r
+        val matches = idPattern.findAllMatchIn(sseEvent.data).toList
+        val id = matches.head.toString
 
         val blurredTweetText = this.blurBadWords(tweetText)
 
@@ -70,8 +71,9 @@ class EngagementRatioCalculator(emotionsMap: Map[String, Int], aggregator: Actor
       val followersCount = regexFollowers.findFirstMatchIn(tweet).map(_.group(1)).getOrElse("")
       val retweetsCount = regexRetweets.findFirstMatchIn(tweet).map(_.group(1)).getOrElse("")
 
-      val idPattern = "\"id_str\":\"(.*?)\"".r.unanchored
-      val id = idPattern.findFirstMatchIn(tweet).map(_.group(1)).getOrElse("")
+      val pattern = """("id_str":"\d+")""".r
+      val matches = pattern.findAllMatchIn(event.data).toList
+      val id = matches.head.toString
 
       val engagementRatio = (favouritesCount.toInt + retweetsCount.toInt).toDouble / followersCount.toInt
       aggregator !  ProcessedTweet(id, "engagementRatio", engagementRatio.toString)
@@ -87,8 +89,9 @@ class SentimentalScoreActor(emotionsMap: Map[String, Int], aggregator: ActorRef)
   }
   override def receive: Receive = {
     case event: SSEEvent => {
-      val idPattern = "\"id_str\":\"(.*?)\"".r.unanchored
-      val id = idPattern.findFirstMatchIn(event.data).map(_.group(1)).getOrElse("")
+      val pattern = """("id_str":"\d+")""".r
+      val matches = pattern.findAllMatchIn(event.data).toList
+      val id = matches.head.toString
 
       val sentimentScore = event.data
         .split("\\s+")
@@ -99,6 +102,23 @@ class SentimentalScoreActor(emotionsMap: Map[String, Int], aggregator: ActorRef)
       aggregator !  ProcessedTweet(id, "sentimentalScore", sentimentScore.toString)
       //      log.info(s"Sentiment Score: $sentimentScore")
     }
+  }
+}
+
+class UserExtractorActor(emotionsMap: Map[String, Int], aggregator: ActorRef) extends Actor with ActorLogging {
+  override def preStart(): Unit = {
+    log.info(s"User Extractor Actor ${self.path.name} restarted! :)")
+  }
+  override def receive: Receive = {
+    case event: SSEEvent =>
+      val pattern = """("id_str":"\d+")""".r
+      val matches = pattern.findAllMatchIn(event.data).toList
+      val firstIdStr = matches.head.toString
+      val lastIdStr = matches.last.toString
+
+            log.info(firstIdStr)
+            log.info(lastIdStr)
+
   }
 }
 
