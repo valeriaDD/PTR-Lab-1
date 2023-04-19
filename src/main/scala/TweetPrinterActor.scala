@@ -1,7 +1,6 @@
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill}
 
 import scala.io.Source
-import scala.util.Random
 
 case class ProcessedTweet(id: String, key: String, value: String);
 
@@ -23,15 +22,13 @@ class TweetPrinterActor(emotionsMap: Map[String, Int], aggregator: ActorRef) ext
         val pattern = "\"text\":\"(.*?)\"".r.unanchored
         val tweetText = pattern.findFirstMatchIn(sseEvent.data).map(_.group(1)).getOrElse("")
 
-        val idPattern = """("id_str":"\d+")""".r
-        val matches = idPattern.findAllMatchIn(sseEvent.data).toList
-        val id = matches.head.toString
+        val idPattern = "\"id_str\":\"(.*?)\"".r.unanchored
+        val id = idPattern.findFirstMatchIn(sseEvent.data).map(_.group(1)).getOrElse("")
 
         val blurredTweetText = this.blurBadWords(tweetText)
 
         aggregator !  ProcessedTweet(id, "text", blurredTweetText)
 
-        Thread.sleep(Random.nextInt(46) + 5)
       }
     case _ => log.error(s" ${self.path.name}: I don't know how to process it")
   }
@@ -71,9 +68,8 @@ class EngagementRatioCalculator(emotionsMap: Map[String, Int], aggregator: Actor
       val followersCount = regexFollowers.findFirstMatchIn(tweet).map(_.group(1)).getOrElse("")
       val retweetsCount = regexRetweets.findFirstMatchIn(tweet).map(_.group(1)).getOrElse("")
 
-      val pattern = """("id_str":"\d+")""".r
-      val matches = pattern.findAllMatchIn(event.data).toList
-      val id = matches.head.toString
+      val idPattern = "\"id_str\":\"(.*?)\"".r.unanchored
+      val id = idPattern.findFirstMatchIn(event.data).map(_.group(1)).getOrElse("")
 
       val engagementRatio = (favouritesCount.toInt + retweetsCount.toInt).toDouble / followersCount.toInt
       aggregator !  ProcessedTweet(id, "engagementRatio", engagementRatio.toString)
@@ -89,9 +85,8 @@ class SentimentalScoreActor(emotionsMap: Map[String, Int], aggregator: ActorRef)
   }
   override def receive: Receive = {
     case event: SSEEvent => {
-      val pattern = """("id_str":"\d+")""".r
-      val matches = pattern.findAllMatchIn(event.data).toList
-      val id = matches.head.toString
+      val idPattern = "\"id_str\":\"(.*?)\"".r.unanchored
+      val id = idPattern.findFirstMatchIn(event.data).map(_.group(1)).getOrElse("")
 
       val sentimentScore = event.data
         .split("\\s+")
@@ -109,16 +104,21 @@ class UserExtractorActor(emotionsMap: Map[String, Int], aggregator: ActorRef) ex
   override def preStart(): Unit = {
     log.info(s"User Extractor Actor ${self.path.name} restarted! :)")
   }
+
   override def receive: Receive = {
     case event: SSEEvent =>
-      val pattern = """("id_str":"\d+")""".r
-      val matches = pattern.findAllMatchIn(event.data).toList
-      val firstIdStr = matches.head.toString
-      val lastIdStr = matches.last.toString
+      if (event.data contains "panic") {
+        throw new Exception(s"${self.path.name}: PANIC, I die! X( ")
+        self ! PoisonPill
+      } else {
+        val idPattern = "\"id_str\":\"(.*?)\"".r.unanchored
+        val userPattern = "\"source_user_id_str\":\"(.*?)\"".r.unanchored
 
-            log.info(firstIdStr)
-            log.info(lastIdStr)
+        val userId = userPattern.findFirstMatchIn(event.data).map(_.group(1)).getOrElse("")
+        val id = idPattern.findFirstMatchIn(event.data).map(_.group(1)).getOrElse("")
 
+        aggregator ! ProcessedTweet(id, "user_id", userId)
+      }
   }
 }
 

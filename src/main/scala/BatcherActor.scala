@@ -1,43 +1,61 @@
-import akka.actor.{Actor, Cancellable}
+import PrivateExecutionContext._
+import akka.actor.Actor
+import models.{Tweet, User, dbTables}
+import slick.jdbc.PostgresProfile.api._
 
+import java.util.concurrent.Executors
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
-case object Tick;
-class BatcherActor(batchSize: Int = 5, timeWindow: FiniteDuration = 3.seconds) extends Actor {
-  private val buffer = new ListBuffer[String]()
-  private var timerCancellable: Option[Cancellable] = None
+object PrivateExecutionContext {
+  private val executor = Executors.newFixedThreadPool(3)
+  implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(executor)
+}
 
-  override def preStart(): Unit = {
-    scheduleTimer()
-  }
+class BatcherActor(batchSize: Int = 5) extends Actor {
+  private val buffer = new ListBuffer[Tweet]()
 
 
   override def receive: Receive = {
-    case tweet: String =>
-      buffer += tweet
-      if (buffer.length >= batchSize) {
-        printBatchAndCancelTimer()
+    case tweet: Tweet =>
+      if (tweet.userId.nonEmpty) {
+        buffer += tweet
       }
-
-    case Tick =>
-      printBatchAndCancelTimer()
+      if (buffer.length >= batchSize) {
+        insertTweet()
+      }
   }
 
-  private def printBatchAndCancelTimer(): Unit = {
-    timerCancellable.foreach(_.cancel())
-    timerCancellable = None
-      println(s"Batch of size ${buffer.length}: ${buffer.mkString(", ")}")
-      buffer.clear()
+  private def insertTweet(): Unit = {
+    buffer.foreach(tweet => {
+      this.insertUser(tweet);
+
+      val tweetQueryDescription = dbTables.tweetTable.insertOrUpdate(tweet)
+      val futureTweetId: Future[Int] = Connection.db.run(tweetQueryDescription)
+
+      futureTweetId.onComplete {
+        case Success(id) => println(s"Success tweet insert, id: $id")
+        case Failure(ex) => println(s"Fail tweet insert $ex")
+      }
+      Thread.sleep(1000)
+
+    })
+
+
+    println(s"Batch of size ${buffer.length}: ${buffer.mkString(", ")}")
+    buffer.clear()
   }
 
-  private def scheduleTimer(): Unit = {
-    import context.dispatcher
-    timerCancellable = Some(context.system.scheduler.scheduleWithFixedDelay(Duration.Zero, timeWindow, self, Tick))
-  }
+  private def insertUser(tweet: Tweet): Unit = {
+    val userQueryDescription = dbTables.userTable.insertOrUpdate(User(tweet.userId, null))
+    val futureUserId: Future[Int] = Connection.db.run(userQueryDescription)
 
-  override def postStop(): Unit = {
-    timerCancellable.foreach(_.cancel())
-    timerCancellable = None
+    futureUserId.onComplete {
+      case Success(id) => println(s"Success user insert, id: $id")
+      case Failure(ex) => println(s"Fail user insert $ex")
+    }
+
+    Thread.sleep(1000)
   }
 }

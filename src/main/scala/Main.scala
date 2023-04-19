@@ -1,20 +1,14 @@
 import models.{Tweet, User, dbTables}
 
-import java.util.concurrent.Executors
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{Future}
 import scala.util.{Failure, Success}
 
-
-object PrivateExecutionContext {
-  private val executor = Executors.newFixedThreadPool(4)
-  implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(executor)
-}
 
 object Main {
   import slick.jdbc.PostgresProfile.api._
   import PrivateExecutionContext._
 
-  val tweet: Tweet = Tweet(1L, "2", "test", "score", "engagement")
+  val tweet: Tweet = Tweet("1", "2", "test", "score", "engagement")
 
   def insertTweet(): Unit = {
     val queryDescription = dbTables.tweetTable += tweet

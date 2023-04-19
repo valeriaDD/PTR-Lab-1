@@ -1,4 +1,5 @@
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import models.Tweet
 
 class AggregatorActor extends Actor with ActorLogging {
 
@@ -8,7 +9,7 @@ class AggregatorActor extends Actor with ActorLogging {
 
   private var tweetsMap: Map[String, Map[String, String]] = Map.empty
 
-  val batcher: ActorRef = context.actorOf(Props(new BatcherActor(10)), "batcher")
+  val batcher: ActorRef = context.actorOf(Props(new BatcherActor(3)), "batcher")
 
   override def receive: Receive = {
     case tweetInfo: ProcessedTweet =>
@@ -18,7 +19,18 @@ class AggregatorActor extends Actor with ActorLogging {
           tweetsMap = tweetsMap.updated(tweetInfo.id, newValue)
 
           if (isCompleted(tweetsMap(tweetInfo.id))) {
-            batcher ! tweetsMap(tweetInfo.id).mkString("; ")
+            val tweetItem = tweetsMap(tweetInfo.id)
+            println(tweetItem)
+
+            batcher ! Tweet(
+              tweetInfo.id,
+              tweetItem("user_id"),
+              "a",
+              tweetItem("engagementRatio"),
+              tweetItem("sentimentalScore")
+            )
+
+            println("Tweet send to batcher")
             tweetsMap.removed(tweetInfo.id)
           }
 
@@ -28,6 +40,9 @@ class AggregatorActor extends Actor with ActorLogging {
   }
 
   private def isCompleted(map: Map[String, String]): Boolean = {
-    map.contains("text") && map.contains("engagementRatio") && map.contains("sentimentalScore")
+    map.contains("user_id") &&
+      map.contains("text") &&
+      map.contains("engagementRatio") &&
+      map.contains("sentimentalScore")
   }
 }

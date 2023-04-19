@@ -54,17 +54,17 @@ object SseReader {
         val poolSupervisor = system.actorOf(Props(new PoolSupervisor(1, classOf[TweetPrinterActor], emotionsMap, aggregator)), "supervisor")
         val poolEmotionsSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[EngagementRatioCalculator], emotionsMap, aggregator)), "supervisorEngagement")
         val poolSentimentalSupervisor = system.actorOf(Props(new PoolSupervisor(3, classOf[SentimentalScoreActor], emotionsMap, aggregator)), "supervisorSentimental")
-//        val poolUserInfoExtractor = system.actorOf(Props(new PoolSupervisor(1, classOf[UserExtractorActor], emotionsMap, aggregator)), "userExtractor")
+        val poolUserInfoExtractor = system.actorOf(Props(new PoolSupervisor(1, classOf[UserExtractorActor], emotionsMap, aggregator)), "userExtractor")
 
         val sseActor = system.actorOf(Props(new SseReader("http://localhost:70/tweets/1", poolSupervisor)), "sseReader1")
         val sseActor1 = system.actorOf(Props(new SseReader("http://localhost:70/tweets/1", poolEmotionsSupervisor)), "sseReader2")
         val sseActor2 = system.actorOf(Props(new SseReader("http://localhost:70/tweets/1", poolSentimentalSupervisor)), "sseReader3")
-//        val sseActor3 = system.actorOf(Props(new SseReader("http://localhost:70/tweets/1", poolUserInfoExtractor)), "sseReader4")
+        val sseActor3 = system.actorOf(Props(new SseReader("http://localhost:70/tweets/1", poolUserInfoExtractor)), "sseReader4")
 
         sseActor ! "start"
         sseActor1 ! "start"
         sseActor2 ! "start"
-//        sseActor3 ! "start"
+        sseActor3 ! "start"
 
       case Failure(ex) => println(s"Failed to get emotions: ${ex.getMessage}")
     }

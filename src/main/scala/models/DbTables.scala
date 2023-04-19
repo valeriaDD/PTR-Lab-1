@@ -1,6 +1,6 @@
 package models
 
-case class Tweet(id: Long, userId: String, text: String, engagementRatio: String, sentimentalScore: String)
+case class Tweet(id: String, userId: String, text: String, engagementRatio: String, sentimentalScore: String)
 case class User(id: String, name: String)
 
 object dbTables {
@@ -11,7 +11,7 @@ object dbTables {
   lazy val userTable = TableQuery[UserTable]
 
   class TweetTable(tag: Tag) extends Table[Tweet](tag, Some("tweets"), "Tweet") {
-    def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
+    def id = column[String]("id", O.PrimaryKey)
 
     def userId = column[String]("user_id")
 
