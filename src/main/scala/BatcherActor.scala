@@ -42,7 +42,6 @@ class BatcherActor(batchSize: Int = 5) extends Actor {
 
     })
 
-
     println(s"Batch of size ${buffer.length}: ${buffer.mkString(", ")}")
     buffer.clear()
   }
