@@ -6,12 +6,13 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.util.{Failure, Try}
 
-case class Subscribe(senderHashCode: Int, sender: ActorRef)
-case class Unsubscribe(senderHashCode: Int)
-case class Publish(message: String)
+case class Subscribe(senderHashCode: Int, sender: ActorRef, message: String)
+
+case class Unsubscribe(senderHashCode: Int, sender: ActorRef, message: String)
+
+case class Publish(senderHashCode: Int, sender: ActorRef, message: String)
 
 class TopicPool(implicit system: ActorSystem) extends Actor with ActorLogging {
-  private val errorLogFile = "C:\\Users\\dubin\\Uni_sem_6\\PTR\\Labs\\Lab1\\src\\main\\scala\\lab2\\error_log.txt"
 
   def receive: Receive = {
     case Message(senderHashCode, sender, message) =>
@@ -24,22 +25,20 @@ class TopicPool(implicit system: ActorSystem) extends Actor with ActorLogging {
         context.child(topicActorName) match {
           case Some(topicActor) =>
             messageType.toUpperCase match {
-              case "SUBSCRIBE" => topicActor ! Subscribe(senderHashCode, sender)
-              case "UNSUBSCRIBE" => topicActor ! Unsubscribe(senderHashCode)
-              case "PUBLISH" => topicActor ! Publish(message)
+              case "SUBSCRIBE" => topicActor ! Subscribe(senderHashCode, sender, message)
+              case "UNSUBSCRIBE" => topicActor ! Unsubscribe(senderHashCode, sender, message)
+              case "PUBLISH" => topicActor ! Publish(senderHashCode, sender, message)
               case _ => val errorMessage = generateErrorMessage(senderHashCode, message, s"Invalid message type, provided ${messageType}")
                 logErrorToFile(errorMessage)
             }
           case None =>
             messageType.toUpperCase match {
-              case "SUBSCRIBE" => context.actorOf(Props(new Topic()), name = topicActorName) ! Subscribe(senderHashCode, sender)
+              case "SUBSCRIBE" => context.actorOf(Props(new Topic()), name = topicActorName) ! Subscribe(senderHashCode, sender, message)
+              case "PUBLISH" => context.actorOf(Props(new Topic()), name = topicActorName) ! Publish(senderHashCode,sender ,message)
               case "UNSUBSCRIBE" =>
-                val errorMessage = generateErrorMessage(senderHashCode, message, s"No subscribers for topic $messageTopic")
-                logErrorToFile(errorMessage)
-              case "PUBLISH" => context.actorOf(Props(new Topic()), name = topicActorName) ! Publish(message)
+                logErrorToFile(generateErrorMessage(senderHashCode, message, s"No subscribers for topic $messageTopic"))
               case _ =>
-                val errorMessage = generateErrorMessage(senderHashCode, message, s"Invalid message type, provided ${messageType}")
-                logErrorToFile(errorMessage)
+                logErrorToFile( generateErrorMessage(senderHashCode, message, s"Invalid message type, provided ${messageType}"))
             }
         }
       } match {
@@ -48,6 +47,8 @@ class TopicPool(implicit system: ActorSystem) extends Actor with ActorLogging {
           logErrorToFile(errorMessage)
         case _ =>
       }
+    case DeleteConnection(senderHashCode) =>
+      context.children.foreach(childActor => childActor ! DeleteConnection(senderHashCode))
   }
 
   private def generateErrorMessage(senderHashCode: Int, message: String, errorMessage: String): String = {
@@ -58,6 +59,7 @@ class TopicPool(implicit system: ActorSystem) extends Actor with ActorLogging {
 
 
   private def logErrorToFile(errorMessage: String): Unit = {
+    val errorLogFile = "C:\\Users\\dubin\\Uni_sem_6\\PTR\\Labs\\Lab1\\src\\main\\scala\\lab2\\error_log.txt"
     val logFile = new java.io.File(errorLogFile)
     val writer = new java.io.FileWriter(logFile, true)
     try {

@@ -1,10 +1,10 @@
 package lab2
 
 import akka.actor.{Actor, ActorRef, ActorSystem}
-import akka.io.Tcp.{ConnectionClosed, Received, Write}
-import akka.util.ByteString
+import akka.io.Tcp.{ConnectionClosed, Received}
 
 case class Message(senderHashCode: Int, sender: ActorRef, message: String)
+case class DeleteConnection(senderHashCode: Int)
 
 class TCPConnectionHandler(topicPool: ActorRef)(implicit system: ActorSystem) extends Actor {
   var text = "";
@@ -12,7 +12,7 @@ class TCPConnectionHandler(topicPool: ActorRef)(implicit system: ActorSystem) ex
   override def receive: Actor.Receive = {
     case Received(data) =>
       val decoded = data.utf8String
-      if(text.toUpperCase.takeRight(3).equals("END")) {
+      if(text.toUpperCase.trim.takeRight(3).equals("END")) {
         topicPool ! Message(sender().hashCode(), sender(), text)
 
         text = "";
@@ -20,7 +20,8 @@ class TCPConnectionHandler(topicPool: ActorRef)(implicit system: ActorSystem) ex
         text += decoded
       }
     case message: ConnectionClosed =>
-      println("Connection has been closed")
+      topicPool ! DeleteConnection(sender().hashCode())
+      println(s"Connection with ${sender().hashCode()} has been closed.")
       context stop self
   }
 }

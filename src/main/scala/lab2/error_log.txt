@@ -1,3 +1,6 @@
 [2023-05-16T18:47:32.2281046] [TopicPool] [Sender Hash Code: 586460199] [Message: hi END] Error: Invalid message type, provided hi
 [2023-05-16T18:48:23.9313702] [TopicPool] [Sender Hash Code: 586460199] [Message: SUBSCRIEBE message hi END] Error: Invalid message type, provided SUBSCRIEBE
 [2023-05-16T18:49:51.2269385] [TopicPool] [Sender Hash Code: 586460199] [Message: UNSUBSCRIBE bb END] Error: No subscribers for topic bb
+[2023-05-16T20:17:04.2038193] [TopicPool] [Sender Hash Code: 401418242] [Message: PUBS END] Error: Invalid message type, provided PUBS
+[2023-05-16T21:02:41.3619544] [TopicPool] [Sender Hash Code: -2041435646] [Message: sub ssa end] Error: Invalid message type, provided sub
+[2023-05-16T21:03:23.1879683] [TopicPool] [Sender Hash Code: -697684181] [Message: e end] Error: Invalid message type, provided e
