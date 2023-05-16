@@ -1,0 +1,3 @@
+[2023-05-16T18:47:32.2281046] [TopicPool] [Sender Hash Code: 586460199] [Message: hi END] Error: Invalid message type, provided hi
+[2023-05-16T18:48:23.9313702] [TopicPool] [Sender Hash Code: 586460199] [Message: SUBSCRIEBE message hi END] Error: Invalid message type, provided SUBSCRIEBE
+[2023-05-16T18:49:51.2269385] [TopicPool] [Sender Hash Code: 586460199] [Message: UNSUBSCRIBE bb END] Error: No subscribers for topic bb
